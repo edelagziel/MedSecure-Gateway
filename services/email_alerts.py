@@ -31,8 +31,12 @@ def send_security_alert(filename: str, reason: str):
     print(msg.as_string())
     print("----------------------\n")
 
-    return {
-        "filename": filename,
-        "timestamp": timestamp,
-        "reason": reason
-    }
+    # return {
+    #     "filename": filename,
+    #     "timestamp": timestamp,
+    #     "reason": reason
+    # }
+
+
+    # not using the value of return so not needed 
+

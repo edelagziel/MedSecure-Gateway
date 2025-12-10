@@ -1,7 +1,7 @@
 from services.validate_size import validate_file_size
 from services.staging import stage_file_temporarily
 from services.quarantine import move_to_quarantine
-from alerts.email_alerts import send_security_alert
+from services.email_alerts import send_security_alert
 from virus_scanning.av_scanner import scan_file, ScanStatus
 
 from fastapi import UploadFile
