@@ -3,6 +3,7 @@ from .quarantine import move_to_quarantine
 from .mime_validation import validate_mime_type
 from .validate_metadata import validate_metadata
 from fastapi import HTTPException
+from alerts.email_alerts import send_security_alert
 
 
 
@@ -23,8 +24,17 @@ def process_file(file, checksum):
         validate_metadata(file,allowed_extensions)
         return {"received": True, "filename": file.filename, "checksum": checksum}
     except Exception as e:
+        # Move file to quarantine folder
         move_to_quarantine(file)
+
+        # Send security alert
+        send_security_alert(
+            filename=file.filename,
+            reason=str(e)
+        )
+
         raise HTTPException(status_code=400, detail=str(e))
+
 
 
 
