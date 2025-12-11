@@ -1,7 +1,7 @@
 import boto3
-s3 = boto3.client("s3")
+s3 = boto3.client("s3", region_name="eu-central-1")
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-BUCKET_NAME = "PUT-YOUR-BUCKET-HERE"
+BUCKET_NAME = "medsecure-eden-tma-2025"
 
 def upload_to_s3(local_path, s3_key):
     try:
