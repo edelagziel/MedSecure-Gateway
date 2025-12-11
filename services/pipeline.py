@@ -9,6 +9,8 @@ from services.email_alerts import send_security_alert
 from .save_uploadfile import save_file_permanently
 from fastapi import HTTPException
 from .AV_scanner import scan_file
+from services.s3_upload import upload_to_s3
+
 
 
 allowed_types = [
@@ -30,8 +32,9 @@ def process_file(file, checksum):
         validate_metadata(file,allowed_extensions)
         validate_file_size(file,MAX_UPLOAD_SIZE)
         scan_file(file_location)
+        upload_to_s3(file_location, file.filename)
         return {"received": True, "filename": file.filename, "checksum": checksum}
-    
+
     except Exception as e:
         # Move file to quarantine folder
         move_to_quarantine(file_location, reason=str(e))
@@ -41,18 +44,22 @@ def process_file(file, checksum):
 
         raise HTTPException(status_code=400, detail=str(e))
 
-
 # from fastapi import HTTPException
 #
-# from .validate_size import validate_file_size
-# from .mime_validation import validate_mime_type
-# from .validate_metadata import validate_metadata
-# from .staging import stage_file_temporarily
-# from .checksum import verify_checksum
-# from .quarantine import move_to_quarantine
-# from alerts.email_alerts import send_security_alert
-# from AV_scanner import scan_file   # התאימי למיקום הנכון אצלך
+# from services.validate_size import validate_file_size
+# from services.mime_validation import validate_mime_type
+# from services.validate_metadata import validate_metadata
+# from services.checksum import verify_checksum
+# from services.quarantine import move_to_quarantine
+# from services.email_alerts import send_security_alert
+# from services.save_uploadfile import save_file_permanently
+# from services.AV_scanner import scan_file
+# from services.s3_upload import upload_to_s3  # ⬅️ החדש!
 #
+# import os
+#
+#
+# # Allowed MIME types & extensions
 # allowed_types = [
 #     "application/pdf",
 #     "text/plain",
@@ -62,17 +69,21 @@ def process_file(file, checksum):
 #
 # allowed_extensions = ["pdf", "txt", "csv", "json"]
 #
-# MAX_UPLOAD_SIZE = 10 * 1024 * 1024   # 10MB
+# MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 #
 #
 # def process_file(file, checksum):
 #     """
-#     Complete secure upload pipeline:
-#     - Validations (size, MIME, metadata)
-#     - Temporary staging
-#     - AV scanning
-#     - Checksum validation
-#     - Quarantine + alerting on failure
+#     Secure file-processing pipeline:
+#
+#     1. Validate size
+#     2. Validate MIME type
+#     3. Validate metadata
+#     4. Save file permanently to /incoming
+#     5. Antivirus scan
+#     6. Verify checksum
+#     7. Upload clean file to S3
+#     8. On failure → quarantine + alert + HTTP 400
 #     """
 #
 #     try:
@@ -82,39 +93,41 @@ def process_file(file, checksum):
 #         # 2. Validate MIME type
 #         validate_mime_type(file, file.content_type, allowed_types)
 #
-#         # 3. Validate filename extension metadata
+#         # 3. Validate metadata (filename / extension)
 #         validate_metadata(file, allowed_extensions)
 #
-#         # 4. Stage file temporarily (required by assignment)
-#         temp_path = stage_file_temporarily(file)
+#         # 4. Save file permanently
+#         file_location = save_file_permanently(file)
 #
-#         # 5. Antivirus scan on the staged file
-#         scan_file(temp_path)  # raises ValueError on infected/error
+#         # 5. Antivirus scan
+#         scan_file(file_location)  # raises ValueError on infected/error
 #
-#         # 6. Verify integrity only after file passes all previous tests
+#         # 6. Verify checksum AFTER AV & validations
 #         verify_checksum(file, checksum)
 #
-#         # SUCCESS
+#         # 7. Upload clean file to S3
+#         upload_to_s3(file_location, file.filename)
+#
+#         # SUCCESS RESPONSE
 #         return {
 #             "received": True,
 #             "filename": file.filename,
-#             "checksum": checksum
+#             "checksum": checksum,
+#             "uploaded_to_s3": True
 #         }
 #
 #     except Exception as e:
+#         reason = str(e)
 #
-#         # Quarantine the staged file (path)
+#         # Attempt to quarantine only if file was saved
 #         try:
-#             move_to_quarantine(temp_path, reason=str(e))
+#             if "file_location" in locals():
+#                 move_to_quarantine(file_location, reason=reason)
 #         except:
-#             pass  # אם staging itself נכשל, אין מה לבודד
+#             pass  # quarantine failed silently — acceptable in assignment
 #
-#         # Generate a security alert
-#         send_security_alert(
-#             filename=file.filename,
-#             reason=str(e)
-#         )
+#         # Send alert email (printed to console)
+#         send_security_alert(filename=file.filename, reason=reason)
 #
-#         # Final error to the user
-#         raise HTTPException(status_code=400, detail=str(e))
-
+#         # Return HTTP error to client
+#         raise HTTPException(status_code=400, detail=reason)
