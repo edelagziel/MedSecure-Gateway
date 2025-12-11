@@ -51,9 +51,7 @@ def process_file(file, checksum):
 # from .checksum import verify_checksum
 # from .quarantine import move_to_quarantine
 # from alerts.email_alerts import send_security_alert
-#
-# from virus_scanning.av_scanner import scan_file, ScanStatus
-#
+# from AV_scanner import scan_file   # התאימי למיקום הנכון אצלך
 #
 # allowed_types = [
 #     "application/pdf",
@@ -64,45 +62,59 @@ def process_file(file, checksum):
 #
 # allowed_extensions = ["pdf", "txt", "csv", "json"]
 #
-# MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+# MAX_UPLOAD_SIZE = 10 * 1024 * 1024   # 10MB
 #
 #
 # def process_file(file, checksum):
+#     """
+#     Complete secure upload pipeline:
+#     - Validations (size, MIME, metadata)
+#     - Temporary staging
+#     - AV scanning
+#     - Checksum validation
+#     - Quarantine + alerting on failure
+#     """
 #
 #     try:
-#         # 1. Size check
+#         # 1. Validate file size
 #         validate_file_size(file, MAX_UPLOAD_SIZE)
 #
-#         # 2. MIME
+#         # 2. Validate MIME type
 #         validate_mime_type(file, file.content_type, allowed_types)
 #
-#         # 3. Metadata
+#         # 3. Validate filename extension metadata
 #         validate_metadata(file, allowed_extensions)
 #
-#         # 4. Temporary staging
+#         # 4. Stage file temporarily (required by assignment)
 #         temp_path = stage_file_temporarily(file)
 #
-#         # 5. AV scan on the staged file
-#         av_result = scan_file(temp_path)
+#         # 5. Antivirus scan on the staged file
+#         scan_file(temp_path)  # raises ValueError on infected/error
 #
-#         if av_result.status == ScanStatus.INFECTED:
-#             raise ValueError(f"AV blocked file: {av_result.signature}")
-#
-#         if av_result.status == ScanStatus.ERROR:
-#             raise ValueError(f"AV scan error: {av_result.signature}")
-#
-#         # 6. Checksum validation (only after file is considered clean)
+#         # 6. Verify integrity only after file passes all previous tests
 #         verify_checksum(file, checksum)
 #
-#         return {"received": True, "filename": file.filename, "checksum": checksum}
+#         # SUCCESS
+#         return {
+#             "received": True,
+#             "filename": file.filename,
+#             "checksum": checksum
+#         }
 #
 #     except Exception as e:
-#         # quarantine original uploaded file
-#         move_to_quarantine(file, reason=str(e))
 #
-#         # send alert
-#         send_security_alert(file.filename, reason=str(e))
+#         # Quarantine the staged file (path)
+#         try:
+#             move_to_quarantine(temp_path, reason=str(e))
+#         except:
+#             pass  # אם staging itself נכשל, אין מה לבודד
 #
+#         # Generate a security alert
+#         send_security_alert(
+#             filename=file.filename,
+#             reason=str(e)
+#         )
+#
+#         # Final error to the user
 #         raise HTTPException(status_code=400, detail=str(e))
-
 
